@@ -1,0 +1,133 @@
+// use prisma-8
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Níveis de acesso
+enum PerfilAcesso {
+  DONO
+  GERENTE
+  FUNCIONARIO
+}
+
+// Situação do funcionário
+enum StatusFuncionario {
+  ATIVO
+  FERIAS
+  AFASTADO
+  DESLIGADO
+}
+
+// Empresa
+model Empresa {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  cnpj      String?  @unique
+  email     String?
+  telefone  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  usuarios     Usuario[]
+  departamentos Departamento[]
+  cargos       Cargo[]
+}
+
+// Usuários que acessam o ERP
+model Usuario {
+  id        Int          @id @default(autoincrement())
+  nome      String
+  email     String       @unique
+  senha     String
+  perfil    PerfilAcesso @default(FUNCIONARIO)
+  ativo     Boolean      @default(true)
+
+  empresaId Int
+  empresa   Empresa      @relation(fields: [empresaId], references: [id])
+
+  funcionario Funcionario?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Dados profissionais dos colaboradores
+model Funcionario {
+  id              Int               @id @default(autoincrement())
+  matricula       String?
+  cpf             String?           @unique
+  telefone        String?
+  endereco        String?
+  dataAdmissao    DateTime?
+  dataDesligamento DateTime?
+  salario         Decimal?          @db.Decimal(10, 2)
+  status          StatusFuncionario @default(ATIVO)
+
+  usuarioId Int     @unique
+  usuario   Usuario @relation(fields: [usuarioId], references: [id])
+
+  cargoId Int?
+  cargo   Cargo? @relation(fields: [cargoId], references: [id])
+
+  departamentoId Int?
+  departamento   Departamento? @relation(fields: [departamentoId], references: [id])
+
+  // Relação entre gerente e funcionários
+  gestorId     Int?
+  gestor       Funcionario?  @relation("GestaoFuncionarios", fields: [gestorId], references: [id])
+  subordinados Funcionario[] @relation("GestaoFuncionarios")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([matricula, usuarioId])
+}
+
+// Departamentos da empresa
+model Departamento {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  descricao String?
+
+  empresaId Int
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  funcionarios Funcionario[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([nome, empresaId])
+}
+
+// Cargos
+model Cargo {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  descricao String?
+
+  empresaId Int
+  empresa   Empresa @relation(fields: [empresaId], references: [id])
+
+  funcionarios Funcionario[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([nome, empresaId])
+}
+
+// Produtos
+model Produto {
+  id       Int      @id @default(autoincrement())
+  nome     String
+  preco    Decimal  @db.Decimal(10, 2)
+  estoque  Int      @default(0)
+  criadoEm DateTime @default(now())
+}
